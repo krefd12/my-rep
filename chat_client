@@ -1,0 +1,130 @@
+import socket
+import time
+import datetime
+import psycopg2
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+import requests
+import os
+import threading
+import json
+
+def receber_msg():#funçao para usar no thread
+	msg = soqt.recv(1024)
+	msg_serv = msg.decode('utf-8')
+	print('\nservidor >>> %s' %(msg_serv))
+
+
+
+urls = { "token":"https://suap.ifrn.edu.br/api/v2/autenticacao/token/",
+         "dados":"https://suap.ifrn.edu.br/api/v2/minhas-informacoes/meus-dados/"}
+
+
+
+usuario_s =  input('digite sua matricula do suap:' )#conectar com sua conta
+senha_s = input('digite sua senha do suap:' )
+
+
+autenticacao = {
+    "username": usuario_s,
+    "password": senha_s
+}
+
+
+send_token = requests.post(urls['token'], data=autenticacao)#pegando o token
+if send_token.status_code == 200:
+	resp_send_token = json.loads(send_token.content.decode('utf-8'))['token']
+
+
+cabecalho={'Authorization': 'JWT {0}'.format(resp_send_token)}
+
+
+send_data = requests.get(urls['dados'], headers=cabecalho)# informações
+if send_data.status_code == 200:
+	resp_data = send_data.content.decode('utf-8')
+
+informacoes = json.loads(resp_data)#dicionario json
+
+
+
+try:#conectando com o banco
+	conn = psycopg2.connect("dbname=postgres user=postgres host=localhost")
+	conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+	cur = conn.cursor()
+	print('OK')
+except psycopg2.OperationalError:
+	print('\n')
+	
+try:#criando database pra armazenar as mensagens	
+	cur.execute("CREATE DATABASE chat")
+	conn.commit()
+	cur.close()
+	conn.close()
+	print('OK')
+except psycopg2.ProgrammingError :
+	print('\n')
+	
+try:#conectando...
+	conn = psycopg2.connect("dbname=chat user=postgres host=localhost")
+	conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+	cur = conn.cursor()
+	print('OK')
+except psycopg2.OperationalError:
+	print('\n')
+	
+try:#criando a tabela com a data e a mensagem
+	cur.execute("CREATE TABLE chat (ID SERIAL PRIMARY KEY, texto TEXT, data VARCHAR(100));")
+	print('OK')
+except psycopg2.ProgrammingError:
+	print('\n') 
+
+
+cur.close()#fechando e limpando
+conn.close()
+os.system('clear')
+
+
+try:#recuperando o chat
+	conection = psycopg2.connect("dbname=chat user=postgres host=localhost")
+	cur_conn = conection.cursor()
+	cur_conn.execute("select * from chat")
+	banco = cur_conn.fetchall()
+	for data in banco:
+		print(("%a \nat:%a") %(data[1],data[2]))
+		cur_conn.close()		
+		conection.close()
+except Exception as e:
+	print(e)
+
+time.sleep(1)#apenas para ficar melhor visualmente
+print('Aguarde... \n\n\n\n')
+
+
+conection2 = psycopg2.connect("dbname=chat user=postgres host=localhost")#conectnado ao banco e deixando on para ir salvando as mensagens
+conection2.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)			
+cur2 = conection2.cursor()
+
+
+soqt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+soqt.connect(('127.0.0.1',50025))
+
+while True:#parte do socket enviar e receber mensagens // salvar as mensagens no banco.
+	mensagem = input('Digite uma mensagem: ')
+  
+	mensagem_envio = str('O usuario *%s* disse: %s' %(informacoes['nome_usual'], mensagem))
+	soqt.sendall(bytearray(mensagem_envio, 'utf-8'))	
+	conection_thread_enviar = threading.Thread(target=receber_msg, args=())
+	conection_thread_enviar.start()
+	
+	cur2.execute("INSERT INTO chat (texto, data) VALUES (%s,%s);", (mensagem_envio, datetime.datetime.now().time()))
+	conection2.commit()
+
+
+
+
+soqt.close()
+cur2.close()					
+conection2.close()
+
+
+
+
