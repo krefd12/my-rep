@@ -1,0 +1,40 @@
+echo "BEM VINDO"
+
+if cat /etc/group | grep professores ; >/dev/null then
+  echo "sistema pronto..."
+else
+  groupadd  "professores" | mkdir /home/professores > /dev/null
+  groupadd  "tecnicos" | mkdir /home/tecnicos > /dev/null
+  groupadd  "alunos" | mkdir /home/alunos > /dev/null
+fi
+
+
+echo "digite seu nivel;professores,tecnicos ou alunos"
+read nivel
+if cat /etc/group | grep $nivel >/dev/null; then
+  echo "digite seu nome"
+  read usuario
+else
+  echo "nivel inexistente"
+  exit
+fi
+
+if [[ "$usuario" =~ [A-Z] ]] > /dev/null ; then
+  echo "nome deve conter apenas letras minusculas"
+  exit
+else
+  if cat /etc/passwd | grep $usuario > /dev/null ; then
+    echo "usuario já criado"
+    exit
+  else
+    useradd -G $nivel $usuario 
+    passwd $usuario
+    chage -d 0 perm $usuario
+    mkdir /home/$nivel/$usuario 
+    echo "seu cargo $nivel" "na data" $(date) > /home/$nivel/$usuario/welcom_$usuario.txt
+    echo "REGRAS!" > /home/$nivel/$usuario/regras.txt 
+  fi
+fi
+  
+
+
