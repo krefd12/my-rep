@@ -1,0 +1,165 @@
+ISP = {}
+import os
+from datetime import date 
+def check_cadastro(a,b):
+  if a in b :
+    while True :
+      a = a + 1
+      if not a in b :
+        return a 
+  elif not a in b :
+    return a
+def check(a,b):
+  if a in b :
+    return a
+  elif not a in b :
+    print ("codigo não existe! ")
+
+    
+
+while True:
+  os.system('cls')
+  print("1 - Cadastro")
+  print("2 - Ativar")
+  print("3 - Relatorio/Cadastros")
+  print("4 - Consultar cadastro")
+  print("5 - remover cadastro")
+  print("6 - sair")
+  começo = input("digite sua opção: ")
+  
+  
+  if começo == "1" :
+    lista_ca = []
+    user = input("digite seu nome: ")
+    
+    if len(ISP) == 0 :  
+      if user.isalpha() :
+        codigo = (len(user))**2
+        cad = (user, codigo,)
+        lista_ca.append(cad[0])
+        ISP[cad[1]] = lista_ca 
+      else :
+        print ("o usuario deve ter apenas letras! ")
+    
+      mac = input("digite seu mac: ")
+      if mac.isnumeric() and len(mac) == 12 :
+        mac = (mac, "False")
+        lista_ca.append(mac[0])
+        lista_ca.append(mac[1])
+      else :
+        print ("o mac deve ter apenas numeros e conter 12 digitos! ")
+      input("digite uma tecla para continuar! ")
+    
+    elif len(ISP) >= 1 :
+      if user.isalpha() :
+        codigo = (len(user))**2
+        cad = (user, codigo,)
+      else :
+        print("o usuario deve ter apenas letras! ")
+      
+      mac = input("digite seu mac: ")  
+      if mac.isnumeric() and len(mac) == 12 :
+        ISP2 = str(ISP)
+        if mac in ISP2 :
+          print ('mac já cadastrado!')
+        else :
+          ISP[check_cadastro(cad[1],ISP)] = lista_ca
+          lista_ca.append(cad[0])
+          lista_ca.append(mac)
+          lista_ca.append('False')
+      else :
+        print ("o mac deve ter apenas numeros e conter 12 digitos! ")
+      input("digite uma tecla para continuar! ")  
+      
+  elif começo == '2' :
+    if len(ISP) >= 1 :
+      codigo = int(input("digite seu codigo: "))
+      check(codigo,ISP) 
+      lista_ca.pop()
+      lista_ca.append("True")
+      print (lista_ca)
+      input("digite algo para continuar! ")
+    elif len(ISP) == 0 :
+      print ('nenhum elemento cadastrado: ')
+      input('digite algo para continuar! ')
+  
+  elif começo == '3' :
+    os.system('cls')
+    ISP3 = str(ISP)
+    print("1 - imprimir relatorio na tela: ")
+    print("2 - criar um arquivo com o relatorio: ")
+    opçao = input("digite sua opção: ")    	
+    if opçao == '1' :
+      os.system('cls')
+      print('1 - importar relatorio: ')
+      print('2 - imprimir sem importar: ')
+      choice = input("digite sua opção: ")
+      if choice == '1' :
+        try :
+          arquivo = input("digite o nome do arquivo: ")
+          main = open(arquivo, 'r')
+          lista = []
+          for x in main :
+            sub = x.replace(':','').replace('[','').replace(',','').replace(']','').replace('{','').replace('}','')
+            div = sub.split()
+            lista.append(div)
+            for x in lista :
+              for ele in x :
+                print (ele)
+			
+          main.close()
+          input("digite algo para continuar: ")
+        except FileNotFoundError : 
+          print ("arquivo não encontrado!")
+          input("digite algo para continuar: ")
+      
+      elif choice == '2' :
+        for x in ISP :
+          print ('Codigo: %i\nNome: %s\nMac: %s\nStatus: %s\n' %(x,ISP[x][0],ISP[x][1],ISP[x][2]))
+        input("digite algo para continuar: ")  
+    
+    elif opçao == '2' :
+      m = 0
+      n = str(m)
+      nome = str(date.today())+'0'+n+'.txt'
+      while os.path.exists(nome) == True : 
+	      m = m + 1
+	      n = str(m)
+	      nome = str(date.today())+'0'+n+'.txt'
+	      if not os.path.exists(nome) == True :
+		      main = open(nome , 'w')
+		      main.writelines(ISP3)
+		      main.close()
+		      break 
+      else :
+	      main2 = open(nome , 'w')
+	      main2.writelines(ISP3)
+	      main2.close()
+	 
+        
+      input('arquvido criado, digite algo para continuar: ')
+    
+  elif começo == '4' :
+    if len(ISP) >= 1 :
+      codigo2 = int(input("digite seu codigo: "))
+      print(ISP[check(codigo2,ISP)]) 
+      input("digite uma tecla para continuar: ")
+    elif len(ISP) == 0 :
+      print ("nenhum elemento cadastrado: ")
+      input("digite uma tecla para continuar: ")
+  
+  elif começo == '5' :
+    if len(ISP) >= 1 :
+      codigo3 = int(input("digite seu codigo: "))
+      del ISP[check(codigo3,ISP)]
+      input("digite uma tecla para continuar: ")
+    if len(ISP) == 0 :
+      print ('nenhum elemento cadastrado: ')
+      input("digite uma tecla para continuar: ")
+  
+  elif começo == '6' :
+    break
+      
+      
+      
+      
