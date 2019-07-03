@@ -1,26 +1,15 @@
-import socket
-import time
-import datetime
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+import json
 import requests
 import os
-import threading
-import json
-
-def receber_msg():#funçao para usar no thread
-	msg = soqt.recv(1024)
-	msg_serv = msg.decode('utf-8')
-	print('\nservidor >>> %s' %(msg_serv))
-
-
 
 urls = { "token":"https://suap.ifrn.edu.br/api/v2/autenticacao/token/",
          "dados":"https://suap.ifrn.edu.br/api/v2/minhas-informacoes/meus-dados/"}
 
 
 
-usuario_s =  input('digite sua matricula do suap:' )#conectar com sua conta
+usuario_s =  input('digite sua matricula do suap:' )
 senha_s = input('digite sua senha do suap:' )
 
 
@@ -30,7 +19,7 @@ autenticacao = {
 }
 
 
-send_token = requests.post(urls['token'], data=autenticacao)#pegando o token
+send_token = requests.post(urls['token'], data=autenticacao)
 if send_token.status_code == 200:
 	resp_send_token = json.loads(send_token.content.decode('utf-8'))['token']
 
@@ -38,93 +27,142 @@ if send_token.status_code == 200:
 cabecalho={'Authorization': 'JWT {0}'.format(resp_send_token)}
 
 
-send_data = requests.get(urls['dados'], headers=cabecalho)# informações
+send_data = requests.get(urls['dados'], headers=cabecalho)
 if send_data.status_code == 200:
 	resp_data = send_data.content.decode('utf-8')
 
-informacoes = json.loads(resp_data)#dicionario json
+informacoes = json.loads(resp_data)
 
 
-
-try:#conectando com o banco
-	conn = psycopg2.connect("dbname=postgres user=postgres host=localhost")
-	conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-	cur = conn.cursor()
-	print('OK')
-except psycopg2.OperationalError:
-	print('\n')
+if informacoes['tipo_vinculo'] == 'Aluno' :
+	try:
+		conn = psycopg2.connect("dbname=postgres user=postgres host=localhost")
+		conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+		cur = conn.cursor()
+		print('Usuario Postgres conectado ao banco postgres')
+	except psycopg2.OperationalError:
+		print('Erro ao conectar o usuario postgres e banco postgres')
 	
-try:#criando database pra armazenar as mensagens	
-	cur.execute("CREATE DATABASE chat")
-	conn.commit()
-	cur.close()
-	conn.close()
-	print('OK')
-except psycopg2.ProgrammingError :
-	print('\n')
+
+	try:	
+		cur.execute("CREATE DATABASE alunos")
+		conn.commit()
+		cur.close()
+		conn.close()
+		print('Banco Alunos criados')
+	except psycopg2.ProgrammingError :
+		print('Erro ao criar Banco alunos')
 	
-try:#conectando...
-	conn = psycopg2.connect("dbname=chat user=postgres host=localhost")
-	conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-	cur = conn.cursor()
-	print('OK')
-except psycopg2.OperationalError:
-	print('\n')
+
+	try:
+		conn = psycopg2.connect("dbname=alunos user=postgres host=localhost")
+		conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+		cur = conn.cursor()
+		print('Conectando no banco alunos')
+	except psycopg2.OperationalError:
+		print('Erro ao conectar no banco alunos')
 	
-try:#criando a tabela com a data e a mensagem
-	cur.execute("CREATE TABLE chat (ID SERIAL PRIMARY KEY, texto TEXT, data VARCHAR(100));")
-	print('OK')
-except psycopg2.ProgrammingError:
-	print('\n') 
+
+	try:
+		cur.execute("CREATE TABLE alunos (matricula BIGINT PRIMARY KEY, nome VARCHAR(100), curso VARCHAR(200), campus VARCHAR(300), email VARCHAR(400), vinculo VARCHAR(500));")
+		print('Criando tabela alunos')
+	except psycopg2.ProgrammingError:
+		print('Tabela alunos já existe') 
+	
+
+	try:
+		cur.execute("INSERT INTO alunos (matricula, nome, curso, campus, email, vinculo) VALUES (%s,%s,%s,%s,%s,%s);", (informacoes['matricula'], informacoes['nome_usual'], informacoes['vinculo']['curso'], informacoes['vinculo']['campus'], informacoes['email'], informacoes['tipo_vinculo']))
+		conn.commit()
+		cur.close()					
+		conn.close()
+		print('Inserindo dados na tabela...\n')
+		print('Feito')
+	except psycopg2.IntegrityError:
+		print ('aluno já cadastrado')
 
 
-cur.close()#fechando e limpando
-conn.close()
+
+
+if informacoes['tipo_vinculo'] == 'Servidor' :
+	try:
+		conn = psycopg2.connect("dbname=postgres user=postgres host=localhost")
+		conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+		cur = conn.cursor()
+		print('Usuario Postgres conectado ao banco postgres')
+	except psycopg2.OperationalError:
+		print('Erro ao conectar o usuario postgres e banco postgres')
+
+
+	try:	
+		cur.execute("CREATE DATABASE servidor")
+		conn.commit()
+		cur.close()
+		conn.close()
+		print('Banco Servidor criado')
+	except psycopg2.ProgrammingError :
+		print('Erro ao criar Banco Servidor')
+			
+
+	try:
+		conn = psycopg2.connect("dbname=servidor user=postgres host=localhost")
+		conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+		cur = conn.cursor()
+		print('Conectando no banco Servidor')
+	except psycopg2.OperationalError:
+		print('Erro ao conectar no banco Servidor')
+		
+
+
+	try:
+		cur.execute("CREATE TABLE servidor (matricula BIGINT PRIMARY KEY, nome VARCHAR(100), curso VARCHAR(200), campus VARCHAR(300), email VARCHAR(400), vinculo VARCHAR(500));")
+		print('Criando tabela alunos')
+	except psycopg2.ProgrammingError:
+		print('Tabela Servidor já existe')
+		
+
+	try:
+		cur.execute("INSERT INTO servidor (matricula, nome, curso, campus, email, vinculo) VALUES (%s,%s,%s,%s,%s,%s);", (informacoes['matricula'], informacoes['nome_usual'], informacoes['vinculo']['cargo'], informacoes['vinculo']['campus'], informacoes['email'], informacoes['tipo_vinculo']))
+		conn.commit()
+		cur.close()					
+		conn.close()
+		print('Inserindo dados na tabela...\n')
+		print('Feito')
+	except psycopg2.IntegrityError:
+		print ('Servidor ja cadastrado')
+
+
+
+
+
+ver = input('Deseja ver o banco de dados [S/N]?' )
 os.system('clear')
 
-
-try:#recuperando o chat
-	conection = psycopg2.connect("dbname=chat user=postgres host=localhost")
-	cur_conn = conection.cursor()
-	cur_conn.execute("select * from chat")
-	banco = cur_conn.fetchall()
-	for data in banco:
-		print(("%a \nat:%a") %(data[1],data[2]))
-		cur_conn.close()		
-		conection.close()
-except Exception as e:
-	print(e)
-
-time.sleep(1)#apenas para ficar melhor visualmente
-print('Aguarde... \n\n\n\n')
-
-
-conection2 = psycopg2.connect("dbname=chat user=postgres host=localhost")#conectnado ao banco e deixando on para ir salvando as mensagens
-conection2.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)			
-cur2 = conection2.cursor()
-
-
-soqt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-soqt.connect(('127.0.0.1',50025))
-
-while True:#parte do socket enviar e receber mensagens // salvar as mensagens no banco.
-	mensagem = input('Digite uma mensagem: ')
-  
-	mensagem_envio = str('O usuario *%s* disse: %s' %(informacoes['nome_usual'], mensagem))
-	soqt.sendall(bytearray(mensagem_envio, 'utf-8'))	
-	conection_thread_enviar = threading.Thread(target=receber_msg, args=())
-	conection_thread_enviar.start()
+if ver == 's' or 'S' or 'sim' or 'SIM':
+	banco = input('Qual banco? [alunos,servidor]:' )
+	if banco == 'alunos':
+		try:
+			conection = psycopg2.connect("dbname=alunos user=postgres host=localhost")
+			cur_conn = conection.cursor()
+			cur_conn.execute("select * from alunos")
+			banco = cur_conn.fetchall()
+			for data in banco:
+				print(data)
+				conection.close()
+		except Exception as e:
+			print(e)
 	
-	cur2.execute("INSERT INTO chat (texto, data) VALUES (%s,%s);", (mensagem_envio, datetime.datetime.now().time()))
-	conection2.commit()
+	if banco == 'servidor':
+		try:
+			conection = psycopg2.connect("dbname=servidor user=postgres host=localhost")
+			cur_conn = conection.cursor()
+			cur_conn.execute("select * from servidor")
+			banco = cur_conn.fetchall()
+			for data in banco:
+				print(data)
+				conection.close()
+		except Exception as e:
+			print(e)
 
-
-
-
-soqt.close()
-cur2.close()					
-conection2.close()
-
-
-
-
+else:
+	print('Programa encerrado.')
+		
